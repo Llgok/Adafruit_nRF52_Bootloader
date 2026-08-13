@@ -114,7 +114,7 @@ extern void tusb_hal_nrf_power_event(uint32_t event);
 
 #define DFU_DBL_RESET_MAGIC             0x5A1AD5      // SALADS
 #define DFU_DBL_RESET_APP               0x4ee5677e
-#define DFU_DBL_RESET_DELAY             500
+#define DFU_DBL_RESET_DELAY             1000
 #define DFU_DBL_RESET_MEM               0x20007F7C
 
 #define BOOTLOADER_VERSION_REGISTER     NRF_TIMER2->CC[0]
@@ -161,6 +161,12 @@ static void mbr_init_sd(void) {
 //
 //--------------------------------------------------------------------+
 int main(void) {
+
+  #if defined RT9080_EN
+  nrf_gpio_cfg_output(RT9080_EN);
+  nrf_gpio_pin_write(RT9080_EN, 1);
+  #endif
+
   // Populate Boot Address and MBR Param into MBR if not already
   // MBR_BOOTLOADER_ADDR/MBR_PARAM_PAGE_ADDR are used if available, else UICR registers are used
   // Note: skip it for now since this will prevent us to change the size of bootloader in the future
@@ -185,6 +191,10 @@ int main(void) {
     led_state(STATE_WRITING_FINISHED);
   }
 
+    //过滤掉前一次按键触发
+    //等待电源接通稳定
+    // NRFX_DELAY_MS(700);
+
   // Check all inputs and enter DFU if needed
   // Return when DFU process is complete (or not entered at all)
   check_dfu_mode();
@@ -199,7 +209,10 @@ int main(void) {
    * - sd_softdevice_vector_table_base_set(APP_ADDR)
    * - jump to App reset
    */
-  if (bootloader_app_is_valid() && !bootloader_dfu_sd_in_progress()) {
+
+//   if (bootloader_app_is_valid() && !bootloader_dfu_sd_in_progress()) {
+    //无需判断直接进入应用层
+    if (/*bootloader_app_is_valid() &&*/ !bootloader_dfu_sd_in_progress()) {
     PRINTF("App is valid\r\n");
     if (is_sd_existed()) {
       // MBR forward IRQ to SD (if not already)
@@ -250,9 +263,15 @@ static void check_dfu_mode(void) {
   dfu_start = dfu_start || button_pressed(BUTTON_DFU);
 
   // DFU + FRESET are pressed --> OTA
-  _ota_dfu = _ota_dfu || (button_pressed(BUTTON_DFU) && button_pressed(BUTTON_FRESET));
+//   _ota_dfu = _ota_dfu || (button_pressed(BUTTON_DFU) && button_pressed(BUTTON_FRESET));
+//按下RST按键和BOOT按键之后松开RST按键进入本地DFU模式，不能进入蓝牙DFU模式
+//   _ota_dfu = _ota_dfu || (button_pressed(BUTTON_DFU) && 0);
+//双击RST按键进入本地DFU模式，按下RST按键和BOOT按键之后松开RST按键进入蓝牙DFU模式
+    _ota_dfu = _ota_dfu || button_pressed(BUTTON_FRESET);
 
-  bool const valid_app = bootloader_app_is_valid();
+//   bool const valid_app = bootloader_app_is_valid();
+//无需判断直接进入应用层
+  bool const valid_app = 1;
   bool const just_start_app = valid_app && !dfu_start && (*dbl_reset_mem) == DFU_DBL_RESET_APP;
 
   if (!just_start_app && APP_ASKS_FOR_SINGLE_TAP_RESET()) dfu_start = 1;

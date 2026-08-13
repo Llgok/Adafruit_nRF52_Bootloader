@@ -76,7 +76,18 @@ void board_init(void) {
 
   button_init(BUTTON_DFU);
   button_init(BUTTON_FRESET);
-  NRFX_DELAY_US(100); // wait for the pin state is stable
+
+//   #if defined RT9080_EN
+//   nrf_gpio_cfg_output(RT9080_EN);
+//   nrf_gpio_pin_write(RT9080_EN, 1);
+//   #endif
+
+//   #if defined TTP223_EN
+//   nrf_gpio_cfg_output(TTP223_EN);
+//   nrf_gpio_pin_write(TTP223_EN, 1);
+//   #endif
+
+//   NRFX_DELAY_MS(1500); // wait for the pin state is stable
 
 #if LEDS_NUMBER > 0
   // use PMW0 for LED RED
